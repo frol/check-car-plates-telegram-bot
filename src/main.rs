@@ -44,7 +44,7 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
-    teloxide::enable_logging!();
+    env_logger::init();
     log::info!("Starting dialogue_bot...");
 
     let bot = Bot::from_env().auto_send();
@@ -91,7 +91,7 @@ async fn handle_start(
     app_state: std::sync::Arc<AppState>,
     dialogue: MyDialogue,
 ) -> anyhow::Result<()> {
-    log::info!("start: {:#?}", msg);
+    log::info!("start: {:?}", msg.chat);
     if !msg.chat.is_private() {
         return Ok(());
     }
@@ -169,6 +169,7 @@ async fn handle_awaiting_requests(
         {
             if msg_text.starts_with("/adduser ") {
                 let phone_number = &msg_text["/adduser ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                log::info!("{:?} adding new user {}", contact, phone_number);
                 app_state
                     .redis_connection
                     .lock()
@@ -186,6 +187,7 @@ async fn handle_awaiting_requests(
 
             if msg_text.starts_with("/deluser ") {
                 let phone_number = &msg_text["/deluser ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                log::info!("{:?} removing user {}", contact, phone_number);
                 app_state
                     .redis_connection
                     .lock()
@@ -200,6 +202,7 @@ async fn handle_awaiting_requests(
 
             if msg_text.starts_with("/addadmin ") {
                 let phone_number = &msg_text["/addadmin ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                log::info!("{:?} adding admin {}", contact, phone_number);
                 app_state
                     .redis_connection
                     .lock()
@@ -217,6 +220,7 @@ async fn handle_awaiting_requests(
 
             if msg_text.starts_with("/deladmin ") {
                 let phone_number = &msg_text["/deladmin ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                log::info!("{:?} removing admin {}", contact, phone_number);
                 app_state
                     .redis_connection
                     .lock()
@@ -364,6 +368,7 @@ async fn handle_awaiting_requests(
                     },
                 };
 
+                log::info!("{:?} adding new car {:?}", contact, car_info);
                 app_state
                     .redis_connection
                     .lock()
