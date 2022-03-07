@@ -156,6 +156,83 @@ async fn handle_awaiting_requests(
         return Ok(());
     };
 
+    if msg_text.starts_with("/") {
+        if app_state
+            .redis_connection
+            .lock()
+            .await
+            .exists(format!(
+                "ADMIN:{phone_number}",
+                phone_number = contact.phone_number
+            ))
+            .await?
+        {
+            if msg_text.starts_with("/adduser ") {
+                let phone_number = &msg_text["/adduser ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                app_state
+                    .redis_connection
+                    .lock()
+                    .await
+                    .set(
+                        format!("USER:{phone_number}"),
+                        ""
+                    )
+                    .await?;
+                bot.send_message(
+                        msg.chat.id,
+                        format!("Користувача з номером телефону {phone_number} додано.")
+                    ).await?;
+            }
+
+            if msg_text.starts_with("/deluser ") {
+                let phone_number = &msg_text["/deluser ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                app_state
+                    .redis_connection
+                    .lock()
+                    .await
+                    .del(format!("USER:{phone_number}"))
+                    .await?;
+                bot.send_message(
+                        msg.chat.id,
+                        format!("Користувача з номером телефону {phone_number} видалено.")
+                    ).await?;
+            }
+
+            if msg_text.starts_with("/addadmin ") {
+                let phone_number = &msg_text["/addadmin ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                app_state
+                    .redis_connection
+                    .lock()
+                    .await
+                    .set(
+                        format!("ADMIN:{phone_number}"),
+                        ""
+                    )
+                    .await?;
+                bot.send_message(
+                        msg.chat.id,
+                        format!("Адміна з номером телефону {phone_number} додано.")
+                    ).await?;
+            }
+
+            if msg_text.starts_with("/deladmin ") {
+                let phone_number = &msg_text["/deladmin ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                app_state
+                    .redis_connection
+                    .lock()
+                    .await
+                    .del(format!("ADMIN:{phone_number}"))
+                    .await?;
+                bot.send_message(
+                        msg.chat.id,
+                        format!("Адміна з номером телефону {phone_number} видалено.")
+                    ).await?;
+            }
+
+            return Ok(());
+        }
+    }
+
     if msg_text.len() < 20 {
         let car_license_plate = normalize_license_plate(msg_text);
         log::info!("Searching for \"{car_license_plate}\" (raw: \"{msg_text}\")");
@@ -251,7 +328,7 @@ async fn handle_awaiting_requests(
             ).await?;
         } else {
             let re = regex::Regex::new(
-                r"Номерний знак: (?P<car_license_plate>[^\n]+)\nАвто: (?P<car_brand>[^\n]+)\nКолір авто: (?P<car_color>[^\n]+)\nОсобливості: (?P<comment>[^\n]+)\nЧисельність ДРГ: (?P<number_of_people>\d+|\?)\nМісто де вперше було зафіксовано: (?P<reported_in_city>[^\n]+)",
+                r"Номерний знак: (?P<car_license_plate>[^\n]+)\s+Авто: (?P<car_brand>[^\n]+)\s+Колір авто: (?P<car_color>[^\n]+)\s+Особливості: (?P<comment>[^\n]+)\s+Чисельність ДРГ: (?P<number_of_people>\d+|\?)\s+Місто де вперше було зафіксовано: (?P<reported_in_city>[^\n]+)",
             )
             .unwrap();
             if let Some(car_info_match) = re.captures(&msg_text) {
