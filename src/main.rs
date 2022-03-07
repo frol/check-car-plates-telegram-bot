@@ -52,13 +52,14 @@ async fn main() {
     // All serializers but JSON require enabling feature
     // "serializer-<name>", e. g. "serializer-cbor"
     // or "serializer-bincode"
-    let storage = RedisStorage::open("redis://127.0.0.1:6379", Json)
+    let redis_url = std::env::var("CHECK_CAR_PLATES_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
+    let storage = RedisStorage::open(redis_url.as_str(), Json)
         .await
         .unwrap();
 
     let app_state = AppState {
         redis_connection: tokio::sync::Mutex::new(
-            redis::Client::open("redis://127.0.0.1:6379")
+            redis::Client::open(redis_url)
                 .unwrap()
                 .get_async_connection()
                 .await
@@ -156,7 +157,7 @@ async fn handle_awaiting_requests(
         return Ok(());
     };
 
-    if msg_text.starts_with("/") {
+    if msg_text.starts_with('/') {
         if app_state
             .redis_connection
             .lock()
@@ -167,8 +168,8 @@ async fn handle_awaiting_requests(
             ))
             .await?
         {
-            if msg_text.starts_with("/adduser ") {
-                let phone_number = &msg_text["/adduser ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+            if let Some(phone_number) = msg_text.strip_prefix("/adduser ") {
+                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} adding new user {}", contact, phone_number);
                 app_state
                     .redis_connection
@@ -185,8 +186,8 @@ async fn handle_awaiting_requests(
                     ).await?;
             }
 
-            if msg_text.starts_with("/deluser ") {
-                let phone_number = &msg_text["/deluser ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+            if let Some(phone_number) = msg_text.strip_prefix("/deluser ") {
+                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} removing user {}", contact, phone_number);
                 app_state
                     .redis_connection
@@ -200,8 +201,8 @@ async fn handle_awaiting_requests(
                     ).await?;
             }
 
-            if msg_text.starts_with("/addadmin ") {
-                let phone_number = &msg_text["/addadmin ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+            if let Some(phone_number) = msg_text.strip_prefix("/addadmin ") {
+                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} adding admin {}", contact, phone_number);
                 app_state
                     .redis_connection
@@ -218,8 +219,8 @@ async fn handle_awaiting_requests(
                     ).await?;
             }
 
-            if msg_text.starts_with("/deladmin ") {
-                let phone_number = &msg_text["/deladmin ".len()..].trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+            if let Some(phone_number) = msg_text.strip_prefix("/deladmin ") {
+                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} removing admin {}", contact, phone_number);
                 app_state
                     .redis_connection
@@ -332,10 +333,10 @@ async fn handle_awaiting_requests(
             ).await?;
         } else {
             let re = regex::Regex::new(
-                r"Номерний знак: (?P<car_license_plate>[^\n]+)\s+Авто: (?P<car_brand>[^\n]+)\s+Колір авто: (?P<car_color>[^\n]+)\s+Особливості: (?P<comment>[^\n]+)\s+Чисельність ДРГ: (?P<number_of_people>\d+|\?)\s+Місто де вперше було зафіксовано: (?P<reported_in_city>[^\n]+)",
+                r"Номерний знак:\s+(?P<car_license_plate>[^\n]+)\s+Авто:\s+(?P<car_brand>[^\n]+)\s+Колір авто:\s+(?P<car_color>[^\n]+)\s+Особливості:\s+(?P<comment>[^\n]+)\s+Чисельність ДРГ:\s+(?P<number_of_people>\d+|\?)\s+Місто де вперше було зафіксовано:\s+(?P<reported_in_city>[^\n]+)",
             )
             .unwrap();
-            if let Some(car_info_match) = re.captures(&msg_text) {
+            if let Some(car_info_match) = re.captures(msg_text) {
                 let car_license_plate =
                     normalize_license_plate(&car_info_match["car_license_plate"]);
                 let car_brand = car_info_match["car_brand"].to_owned();
@@ -368,12 +369,12 @@ async fn handle_awaiting_requests(
                     },
                 };
 
-                log::info!("{:?} adding new car {:?}", contact, car_info);
+                log::info!("{:?} adding new car \"{car_license_plate}\" {:?}", contact, car_info);
                 app_state
                     .redis_connection
                     .lock()
                     .await
-                    .set::<_, _, _>(
+                    .set(
                         format!("CAR:{car_license_plate}"),
                         serde_json::to_vec(&car_info).unwrap(),
                     )
