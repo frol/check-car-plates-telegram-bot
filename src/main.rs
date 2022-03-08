@@ -92,12 +92,13 @@ async fn handle_start(
     app_state: std::sync::Arc<AppState>,
     dialogue: MyDialogue,
 ) -> anyhow::Result<()> {
-    log::info!("start: {:?}", msg.chat);
     if !msg.chat.is_private() {
+        log::info!("start: chat is not private: {:?}", msg.chat);
         return Ok(());
     }
     match msg.contact() {
         Some(contact) => {
+            log::info!("start: {:?} {:?}", contact, msg.chat);
             if contact.user_id.map(i64::from) != Some(msg.chat.id) {
                 bot.send_message(msg.chat.id, "Відправте свій контакт.")
                     .reply_markup(request_phone_number_confirmation_keyboard())
@@ -129,6 +130,7 @@ async fn handle_start(
             .await?;
         }
         _ => {
+            log::info!("start: received unexpected type of message {:?}", msg);
             bot.send_message(
                 msg.chat.id,
                 "Натисніть \"Підтвердити мій номер телефону\" щоб продовжити.",
