@@ -236,6 +236,22 @@ async fn handle_awaiting_requests(
                     ).await?;
             }
 
+            if msg_text == "/cars" {
+                log::info!("{:?} fetches the list of cars", contact);
+                let car_keys: Vec<String> = app_state
+                    .redis_connection
+                    .lock()
+                    .await
+                    .keys(format!("CAR:*"))
+                    .await?;
+                for car_keys_batch in car_keys.chunks(100) {
+                    bot.send_message(
+                            msg.chat.id,
+                            car_keys_batch.iter().map(|key| key.strip_prefix("CAR:").unwrap()).collect::<Vec<&str>>().join("\n")
+                        ).await?;
+                }
+            }
+
             return Ok(());
         }
     }
