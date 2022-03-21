@@ -52,10 +52,9 @@ async fn main() {
     // All serializers but JSON require enabling feature
     // "serializer-<name>", e. g. "serializer-cbor"
     // or "serializer-bincode"
-    let redis_url = std::env::var("CHECK_CAR_PLATES_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
-    let storage = RedisStorage::open(redis_url.as_str(), Json)
-        .await
-        .unwrap();
+    let redis_url = std::env::var("CHECK_CAR_PLATES_REDIS_URL")
+        .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
+    let storage = RedisStorage::open(redis_url.as_str(), Json).await.unwrap();
 
     let app_state = AppState {
         redis_connection: tokio::sync::Mutex::new(
@@ -171,25 +170,27 @@ async fn handle_awaiting_requests(
             .await?
         {
             if let Some(phone_number) = msg_text.strip_prefix("/adduser ") {
-                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                let phone_number = phone_number
+                    .trim()
+                    .replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} adding new user {}", contact, phone_number);
                 app_state
                     .redis_connection
                     .lock()
                     .await
-                    .set(
-                        format!("USER:{phone_number}"),
-                        ""
-                    )
+                    .set(format!("USER:{phone_number}"), "")
                     .await?;
                 bot.send_message(
-                        msg.chat.id,
-                        format!("Користувача з номером телефону {phone_number} додано.")
-                    ).await?;
+                    msg.chat.id,
+                    format!("Користувача з номером телефону {phone_number} додано."),
+                )
+                .await?;
             }
 
             if let Some(phone_number) = msg_text.strip_prefix("/deluser ") {
-                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                let phone_number = phone_number
+                    .trim()
+                    .replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} removing user {}", contact, phone_number);
                 app_state
                     .redis_connection
@@ -198,31 +199,34 @@ async fn handle_awaiting_requests(
                     .del(format!("USER:{phone_number}"))
                     .await?;
                 bot.send_message(
-                        msg.chat.id,
-                        format!("Користувача з номером телефону {phone_number} видалено.")
-                    ).await?;
+                    msg.chat.id,
+                    format!("Користувача з номером телефону {phone_number} видалено."),
+                )
+                .await?;
             }
 
             if let Some(phone_number) = msg_text.strip_prefix("/addadmin ") {
-                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                let phone_number = phone_number
+                    .trim()
+                    .replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} adding admin {}", contact, phone_number);
                 app_state
                     .redis_connection
                     .lock()
                     .await
-                    .set(
-                        format!("ADMIN:{phone_number}"),
-                        ""
-                    )
+                    .set(format!("ADMIN:{phone_number}"), "")
                     .await?;
                 bot.send_message(
-                        msg.chat.id,
-                        format!("Адміна з номером телефону {phone_number} додано.")
-                    ).await?;
+                    msg.chat.id,
+                    format!("Адміна з номером телефону {phone_number} додано."),
+                )
+                .await?;
             }
 
             if let Some(phone_number) = msg_text.strip_prefix("/deladmin ") {
-                let phone_number = phone_number.trim().replace(|ch: char| !ch.is_ascii_digit(), "");
+                let phone_number = phone_number
+                    .trim()
+                    .replace(|ch: char| !ch.is_ascii_digit(), "");
                 log::info!("{:?} removing admin {}", contact, phone_number);
                 app_state
                     .redis_connection
@@ -231,9 +235,10 @@ async fn handle_awaiting_requests(
                     .del(format!("ADMIN:{phone_number}"))
                     .await?;
                 bot.send_message(
-                        msg.chat.id,
-                        format!("Адміна з номером телефону {phone_number} видалено.")
-                    ).await?;
+                    msg.chat.id,
+                    format!("Адміна з номером телефону {phone_number} видалено."),
+                )
+                .await?;
             }
 
             if msg_text == "/cars" {
@@ -246,9 +251,14 @@ async fn handle_awaiting_requests(
                     .await?;
                 for car_keys_batch in car_keys.chunks(100) {
                     bot.send_message(
-                            msg.chat.id,
-                            car_keys_batch.iter().map(|key| key.strip_prefix("CAR:").unwrap()).collect::<Vec<&str>>().join("\n")
-                        ).await?;
+                        msg.chat.id,
+                        car_keys_batch
+                            .iter()
+                            .map(|key| key.strip_prefix("CAR:").unwrap())
+                            .collect::<Vec<&str>>()
+                            .join("\n"),
+                    )
+                    .await?;
                 }
             }
 
@@ -387,7 +397,11 @@ async fn handle_awaiting_requests(
                     },
                 };
 
-                log::info!("{:?} adding new car \"{car_license_plate}\" {:?}", contact, car_info);
+                log::info!(
+                    "{:?} adding new car \"{car_license_plate}\" {:?}",
+                    contact,
+                    car_info
+                );
                 app_state
                     .redis_connection
                     .lock()
