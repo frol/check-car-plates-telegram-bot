@@ -110,7 +110,7 @@ async fn handle_start(
                 .await
                 .exists(format!(
                     "USER:{phone_number}",
-                    phone_number = contact.phone_number
+                    phone_number = contact.phone_number.trim_start_matches('+')
                 ))
                 .await?
             {
