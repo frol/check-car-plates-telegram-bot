@@ -247,7 +247,7 @@ async fn handle_awaiting_requests(
                     .redis_connection
                     .lock()
                     .await
-                    .keys(format!("CAR:*"))
+                    .keys("CAR:*")
                     .await?;
                 for car_keys_batch in car_keys.chunks(100) {
                     bot.send_message(
@@ -260,6 +260,25 @@ async fn handle_awaiting_requests(
                     )
                     .await?;
                 }
+            }
+
+            if let Some(car_license_plate) = msg_text.strip_prefix("/delcar ") {
+                let car_license_plate = normalize_license_plate(car_license_plate);
+                log::info!("{:?} deletes car {}", contact, car_license_plate);
+                app_state
+                    .redis_connection
+                    .lock()
+                    .await
+                    .rename(
+                        format!("CAR:{car_license_plate}"),
+                        format!("DELETED_CAR:{car_license_plate}"),
+                    )
+                    .await?;
+                bot.send_message(
+                    msg.chat.id,
+                    format!("Авто з номерними знаками {car_license_plate} видалено."),
+                )
+                .await?;
             }
 
             return Ok(());
